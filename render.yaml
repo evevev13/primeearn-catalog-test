@@ -8,8 +8,8 @@ services:
     autoDeploy: true
     envVars:
       - key: APP_TOKEN
-        value: sltVRszfuB
-      - key: APP_HASH
         value: yQn0wD9FckeNshND
+      - key: APP_HASH
+        value: sltVRszfuB
       - key: NODE_VERSION
         value: 24
