@@ -1,0 +1,26 @@
+stages:
+  - verify
+  - deploy
+
+verify:
+  stage: verify
+  image: node:24
+  cache:
+    paths:
+      - node_modules/
+  script:
+    - npm ci
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 hour
+
+deploy_render:
+  stage: deploy
+  image: curlimages/curl:8.8.0
+  rules:
+    - if: '$RENDER_DEPLOY_HOOK_URL'
+      when: manual
+    - when: never
+  script:
+    - curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"

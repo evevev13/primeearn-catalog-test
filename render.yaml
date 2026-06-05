@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: primeearn-offers-test
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: APP_TOKEN
+        sync: false
+      - key: APP_HASH
+        value: sltVRszfuB
+      - key: NODE_VERSION
+        value: 24

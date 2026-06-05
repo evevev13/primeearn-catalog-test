@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrimeEarn Catalog Test</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+
+    <main class="container">
+      <header class="hero">
+        <p class="kicker">PrimeEarn integration smoke test</p>
+        <h1>Game Catalog</h1>
+        <p class="subtitle">Fetch live offers, open the game tracking link, and validate rewards flow.</p>
+      </header>
+
+      <section class="controls card">
+        <form id="filters">
+          <label>
+            User ID
+            <input id="externalUserId" name="externalUserId" value="test_user_001" required />
+          </label>
+
+          <label>
+            Platform
+            <select id="platform" name="platform">
+              <option value="web">web</option>
+              <option value="ios">ios</option>
+              <option value="android">android</option>
+            </select>
+          </label>
+
+          <label>
+            IP (optional)
+            <input id="ip" name="ip" placeholder="auto-detect" />
+          </label>
+
+          <button type="submit" id="loadBtn">Load Catalog</button>
+        </form>
+        <p id="status" class="status">Ready.</p>
+      </section>
+
+      <section>
+        <div id="grid" class="grid"></div>
+      </section>
+    </main>
+
+    <template id="offerCardTemplate">
+      <article class="offer card">
+        <img class="banner" alt="Offer image" />
+        <div class="offer-content">
+          <h2 class="title"></h2>
+          <p class="meta"></p>
+          <p class="reward"></p>
+          <a class="play-btn" target="_blank" rel="noopener noreferrer">Play & Earn</a>
+          <button class="details-btn" type="button">Show Reward Tasks</button>
+          <div class="details"></div>
+        </div>
+      </article>
+    </template>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
