@@ -68,6 +68,7 @@ app.get('/api/offers', async (req, res) => {
   const url = new URL(`${PRIMEEARN_BASE_URL}/${APP_TOKEN}/api/v1/offers`);
   url.searchParams.set('app', APP_HASH);
   url.searchParams.set('external_user_id', externalUserId);
+  url.searchParams.set('output', 'API');
   if (ip) url.searchParams.set('ip', ip);
   if (platform) url.searchParams.set('platform', platform);
 
@@ -110,6 +111,7 @@ app.get('/api/offers/:id', async (req, res) => {
   const url = new URL(`${PRIMEEARN_BASE_URL}/${APP_TOKEN}/api/v1/offers/${encodeURIComponent(req.params.id)}`);
   url.searchParams.set('app', APP_HASH);
   url.searchParams.set('external_user_id', externalUserId);
+  url.searchParams.set('output', 'API');
   if (ip) url.searchParams.set('ip', ip);
 
   try {
