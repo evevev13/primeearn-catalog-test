@@ -6,7 +6,7 @@
     <title>PrimeEarn Catalog Test</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -42,12 +42,71 @@
           </label>
 
           <button type="submit" id="loadBtn">Load Catalog</button>
+
+          <details class="advanced-options">
+            <summary>Optional parameters</summary>
+            <div class="advanced-grid">
+              <label>
+                MAID
+                <input name="maid" placeholder="IDFA / GAID" />
+              </label>
+              <label>
+                Date of Birth
+                <input name="birthday" type="date" />
+              </label>
+              <label>
+                Age
+                <input name="age" type="number" min="0" max="150" placeholder="e.g. 25" />
+              </label>
+              <label>
+                Gender
+                <select name="gender">
+                  <option value="">Any</option>
+                  <option value="m">Male</option>
+                  <option value="f">Female</option>
+                </select>
+              </label>
+              <label>
+                ZIP code
+                <input name="zip" placeholder="e.g. 90210" />
+              </label>
+              <label>
+                Limit
+                <input name="limit" type="number" min="1" placeholder="max offers" />
+              </label>
+            </div>
+          </details>
         </form>
         <p id="status" class="status">Ready.</p>
       </section>
 
-      <section>
+      <nav class="tabs">
+        <button class="tab-btn active" data-tab="catalog">Catalog</button>
+        <button class="tab-btn" data-tab="api-response">API Response</button>
+        <button class="tab-btn" data-tab="postbacks">S2S Postbacks</button>
+      </nav>
+
+      <section id="tab-catalog" class="tab-panel active">
         <div id="grid" class="grid"></div>
+      </section>
+
+      <section id="tab-api-response" class="tab-panel">
+        <div class="card json-viewer-card">
+          <pre id="apiResponseJson" class="json-viewer">Load the catalog to see the raw API response here.</pre>
+        </div>
+      </section>
+
+      <section id="tab-postbacks" class="tab-panel">
+        <div class="postback-info card">
+          <p>Point your PrimeEarn S2S postback URL to:</p>
+          <code class="postback-url-box" id="postbackUrl"></code>
+          <p class="postback-hint">All incoming GET and POST requests are logged below (auto-refreshes every 3 s). The endpoint always responds <code>200 OK</code>.</p>
+        </div>
+        <div class="postback-toolbar">
+          <span id="postbackCount" class="postback-count"></span>
+          <button id="clearPostbacksBtn" type="button" class="btn-secondary">Clear log</button>
+        </div>
+        <div id="postbackLog"></div>
       </section>
     </main>
 
@@ -58,7 +117,7 @@
           <h2 class="title"></h2>
           <p class="meta"></p>
           <p class="reward"></p>
-          <a class="play-btn" target="_blank" rel="noopener noreferrer">Play & Earn</a>
+          <a class="play-btn" target="_blank" rel="noopener noreferrer">Play &amp; Earn</a>
           <button class="details-btn" type="button">Show Reward Tasks</button>
           <div class="details"></div>
         </div>

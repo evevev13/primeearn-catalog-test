@@ -14,6 +14,7 @@ const APP_HASH = process.env.APP_HASH;
 const PRIMEEARN_BASE_URL = 'https://partners.primeearn.com';
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 function getClientIp(req) {
@@ -72,6 +73,12 @@ app.get('/api/offers', async (req, res) => {
   if (ip) url.searchParams.set('ip', ip);
   if (platform) url.searchParams.set('platform', platform);
 
+  // Optional targeting params
+  for (const param of ['maid', 'birthday', 'age', 'gender', 'zip', 'limit']) {
+    const val = String(req.query[param] || '').trim();
+    if (val) url.searchParams.set(param, val);
+  }
+
   try {
     const response = await fetch(url);
     const data = await response.json();
@@ -129,6 +136,41 @@ app.get('/api/offers/:id', async (req, res) => {
       message: 'Failed to reach PrimeEarn API.',
     });
   }
+});
+
+// S2S postback receiver — logs all incoming GET/POST requests
+const postbackLog = [];
+const MAX_LOG_ENTRIES = 200;
+
+function recordPostback(req) {
+  postbackLog.unshift({
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    query: { ...req.query },
+    body: req.method !== 'GET' ? { ...req.body } : {},
+    ip: getClientIp(req),
+  });
+  if (postbackLog.length > MAX_LOG_ENTRIES) postbackLog.length = MAX_LOG_ENTRIES;
+}
+
+app.get('/postback', (req, res) => {
+  recordPostback(req);
+  res.send('OK');
+});
+
+app.post('/postback', (req, res) => {
+  recordPostback(req);
+  res.send('OK');
+});
+
+app.get('/api/postback-logs', (_req, res) => {
+  res.json({ logs: postbackLog });
+});
+
+app.delete('/api/postback-logs', (_req, res) => {
+  postbackLog.length = 0;
+  res.json({ ok: true });
 });
 
 app.get('*', (_req, res) => {
