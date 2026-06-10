@@ -82,12 +82,21 @@
 
       <nav class="tabs">
         <button class="tab-btn active" data-tab="catalog">Catalog</button>
+        <button class="tab-btn" data-tab="installed">Installed</button>
         <button class="tab-btn" data-tab="api-response">API Response</button>
         <button class="tab-btn" data-tab="postbacks">S2S Postbacks</button>
       </nav>
 
       <section id="tab-catalog" class="tab-panel active">
         <div id="grid" class="grid"></div>
+      </section>
+
+      <section id="tab-installed" class="tab-panel">
+        <div class="tab-toolbar">
+          <span id="installedCount" class="tab-count"></span>
+          <button id="refreshInstalledBtn" type="button" class="btn-secondary">Refresh</button>
+        </div>
+        <div id="installedGrid" class="grid"></div>
       </section>
 
       <section id="tab-api-response" class="tab-panel">
@@ -100,12 +109,16 @@
         <div class="postback-info card">
           <p>Point your PrimeEarn S2S postback URL to:</p>
           <code class="postback-url-box" id="postbackUrl"></code>
-          <p class="postback-hint">All incoming GET and POST requests are logged below (auto-refreshes every 3 s). The endpoint always responds <code>200 OK</code>.</p>
+          <p class="postback-hint">All incoming GET and POST requests are logged below (auto-refreshes every 3 s). The endpoint always responds <code>200 OK</code>. Note: the log is in-memory and resets on each server restart/deploy.</p>
         </div>
         <div class="postback-toolbar">
           <span id="postbackCount" class="postback-count"></span>
-          <button id="clearPostbacksBtn" type="button" class="btn-secondary">Clear log</button>
+          <div class="postback-actions">
+            <button id="testPostbackBtn" type="button" class="btn-secondary">Send test postback</button>
+            <button id="clearPostbacksBtn" type="button" class="btn-secondary">Clear log</button>
+          </div>
         </div>
+        <p id="serverStartTime" class="server-uptime"></p>
         <div id="postbackLog"></div>
       </section>
     </main>
@@ -116,6 +129,7 @@
         <div class="offer-content">
           <h2 class="title"></h2>
           <p class="meta"></p>
+          <p class="install-time"></p>
           <p class="reward"></p>
           <a class="play-btn" target="_blank" rel="noopener noreferrer">Play &amp; Earn</a>
           <button class="details-btn" type="button">Show Reward Tasks</button>

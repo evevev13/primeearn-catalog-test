@@ -17,6 +17,9 @@ function switchTab(name) {
   } else {
     stopPostbackPolling();
   }
+  if (name === 'installed') {
+    loadInstalled();
+  }
 }
 
 tabBtns.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
@@ -83,7 +86,55 @@ async function loadOfferDetails(offerId, externalUserId, ip, detailsContainer, b
   }
 }
 
-// ── Catalog rendering ─────────────────────────────────────────────────────────
+// ── Shared offer card renderer ────────────────────────────────────────────────
+
+function populateOfferCard(clone, offer, externalUserId, ip, { installationTime } = {}) {
+  const banner = clone.querySelector('.banner');
+  const title = clone.querySelector('.title');
+  const meta = clone.querySelector('.meta');
+  const installTimeEl = clone.querySelector('.install-time');
+  const reward = clone.querySelector('.reward');
+  const playBtn = clone.querySelector('.play-btn');
+  const detailsBtn = clone.querySelector('.details-btn');
+  const detailsBox = clone.querySelector('.details');
+
+  banner.src = offer.large_image_url || offer.icon || 'https://placehold.co/800x450?text=Offer';
+  title.textContent = offer.title || offer.app_name || 'Untitled game';
+
+  const rawPlatforms = offer.platforms ?? offer.platform ?? [];
+  const platforms = Array.isArray(rawPlatforms)
+    ? rawPlatforms.join(', ')
+    : String(rawPlatforms || 'multi-platform');
+  meta.textContent = `${offer.genre || 'Unknown genre'} - ${offer.sub_genre || 'General'} - ${platforms}`;
+
+  if (installationTime && installTimeEl) {
+    installTimeEl.textContent = `Installed: ${new Date(installationTime).toLocaleString()}`;
+  }
+
+  reward.textContent = currencyFromReward(offer.reward ?? offer.total_reward);
+
+  const playUrl = offer.tracking_url || '#';
+  playBtn.href = playUrl;
+  if (!offer.tracking_url) {
+    playBtn.textContent = 'Tracking URL not provided';
+    playBtn.classList.add('disabled');
+    playBtn.removeAttribute('target');
+  }
+
+  detailsBtn.addEventListener('click', async () => {
+    const isOpen = detailsBtn.dataset.open === 'true';
+    if (isOpen) {
+      detailsBox.classList.remove('open');
+      detailsBox.innerHTML = '';
+      detailsBtn.dataset.open = 'false';
+      detailsBtn.textContent = 'Show Reward Tasks';
+      return;
+    }
+    await loadOfferDetails(offer.id, externalUserId, ip, detailsBox, detailsBtn);
+  });
+}
+
+// ── Catalog tab ───────────────────────────────────────────────────────────────
 
 function renderOffers(offers, externalUserId, ip) {
   gridEl.innerHTML = '';
@@ -93,43 +144,7 @@ function renderOffers(offers, externalUserId, ip) {
   }
   offers.forEach((offer) => {
     const clone = offerTemplate.content.cloneNode(true);
-    const banner = clone.querySelector('.banner');
-    const title = clone.querySelector('.title');
-    const meta = clone.querySelector('.meta');
-    const reward = clone.querySelector('.reward');
-    const playBtn = clone.querySelector('.play-btn');
-    const detailsBtn = clone.querySelector('.details-btn');
-    const detailsBox = clone.querySelector('.details');
-
-    banner.src = offer.large_image_url || offer.icon || 'https://placehold.co/800x450?text=Offer';
-    title.textContent = offer.title || offer.app_name || 'Untitled game';
-    const rawPlatforms = offer.platforms ?? offer.platform ?? [];
-    const platforms = Array.isArray(rawPlatforms)
-      ? rawPlatforms.join(', ')
-      : String(rawPlatforms || 'multi-platform');
-    meta.textContent = `${offer.genre || 'Unknown genre'} - ${offer.sub_genre || 'General'} - ${platforms}`;
-    reward.textContent = currencyFromReward(offer.reward ?? offer.total_reward);
-
-    const playUrl = offer.tracking_url || '#';
-    playBtn.href = playUrl;
-    if (!offer.tracking_url) {
-      playBtn.textContent = 'Tracking URL not provided';
-      playBtn.classList.add('disabled');
-      playBtn.removeAttribute('target');
-    }
-
-    detailsBtn.addEventListener('click', async () => {
-      const isOpen = detailsBtn.dataset.open === 'true';
-      if (isOpen) {
-        detailsBox.classList.remove('open');
-        detailsBox.innerHTML = '';
-        detailsBtn.dataset.open = 'false';
-        detailsBtn.textContent = 'Show Reward Tasks';
-        return;
-      }
-      await loadOfferDetails(offer.id, externalUserId, ip, detailsBox, detailsBtn);
-    });
-
+    populateOfferCard(clone, offer, externalUserId, ip);
     gridEl.appendChild(clone);
   });
 }
@@ -179,9 +194,7 @@ async function loadCatalog(evt) {
     const payload = await readResponsePayload(response);
     updateApiResponseView(payload);
 
-    if (!response.ok) {
-      throw new Error(payload.message || 'Catalog request failed');
-    }
+    if (!response.ok) throw new Error(payload.message || 'Catalog request failed');
 
     const offers = Array.isArray(payload.data) ? payload.data : [];
     renderOffers(offers, externalUserId, ip);
@@ -196,19 +209,67 @@ async function loadCatalog(evt) {
 
 filtersForm.addEventListener('submit', loadCatalog);
 
+// ── Installed tab ─────────────────────────────────────────────────────────────
+
+async function loadInstalled() {
+  const countEl = document.getElementById('installedCount');
+  const installedGrid = document.getElementById('installedGrid');
+
+  const formData = new FormData(filtersForm);
+  const externalUserId = String(formData.get('externalUserId') || '').trim() || 'test_user_001';
+  const ip = String(formData.get('ip') || '').trim();
+
+  countEl.textContent = 'Loading…';
+  installedGrid.innerHTML = '';
+
+  try {
+    const params = new URLSearchParams({ externalUserId });
+    if (ip) params.set('ip', ip);
+
+    const response = await fetch(`/api/offers/active?${params.toString()}`);
+    const payload = await readResponsePayload(response);
+
+    if (!response.ok) throw new Error(payload.message || 'Failed to load installed games');
+
+    const offers = Array.isArray(payload.data) ? payload.data : [];
+    countEl.textContent = `${offers.length} installed game${offers.length !== 1 ? 's' : ''}`;
+
+    if (!offers.length) {
+      installedGrid.innerHTML = '<p class="empty">No installed games for this user. Click "Play &amp; Earn" on any offer to get started.</p>';
+      return;
+    }
+
+    offers.forEach((offer) => {
+      const clone = offerTemplate.content.cloneNode(true);
+      populateOfferCard(clone, offer, externalUserId, ip, { installationTime: offer.installation_time });
+      installedGrid.appendChild(clone);
+    });
+  } catch (err) {
+    installedGrid.innerHTML = `<p class="empty">${err.message}</p>`;
+    countEl.textContent = '';
+  }
+}
+
+document.getElementById('refreshInstalledBtn').addEventListener('click', loadInstalled);
+
 // ── S2S Postback log ──────────────────────────────────────────────────────────
 
 async function fetchPostbackLogs() {
   try {
     const res = await fetch('/api/postback-logs');
     const data = await res.json();
-    renderPostbackLogs(data.logs || []);
+    renderPostbackLogs(data.logs || [], data.serverStartTime);
   } catch {}
 }
 
-function renderPostbackLogs(logs) {
+function renderPostbackLogs(logs, serverStartTime) {
   const countEl = document.getElementById('postbackCount');
   const logEl = document.getElementById('postbackLog');
+  const uptimeEl = document.getElementById('serverStartTime');
+
+  if (serverStartTime && uptimeEl) {
+    uptimeEl.textContent = `Log started: ${new Date(serverStartTime).toLocaleString()} (resets on each deploy/restart)`;
+  }
 
   if (!logs.length) {
     countEl.textContent = 'No postbacks received yet.';
@@ -245,6 +306,13 @@ function stopPostbackPolling() {
   clearInterval(postbackPollTimer);
   postbackPollTimer = null;
 }
+
+document.getElementById('testPostbackBtn').addEventListener('click', async () => {
+  const externalUserId = document.getElementById('externalUserId').value || 'test_user_001';
+  const params = new URLSearchParams({ source: 'ui_test', user: externalUserId, reward: '100', tx_id: `test-${Date.now()}` });
+  await fetch(`/postback?${params.toString()}`);
+  fetchPostbackLogs();
+});
 
 document.getElementById('clearPostbacksBtn').addEventListener('click', async () => {
   await fetch('/api/postback-logs', { method: 'DELETE' });

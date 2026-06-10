@@ -96,6 +96,36 @@ app.get('/api/offers', async (req, res) => {
   }
 });
 
+app.get('/api/offers/active', async (req, res) => {
+  if (!APP_TOKEN || !APP_HASH) {
+    return res.status(500).json({ status: 'error', message: 'Missing APP_TOKEN or APP_HASH in server environment.' });
+  }
+
+  const externalUserId = String(req.query.externalUserId || 'test_user_001');
+  let ip = String(req.query.ip || '').trim();
+  if (!ip) ip = getClientIp(req);
+
+  if (!ip || ip.includes('127.0.0.1') || ip.includes('::1') || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    const publicIp = await detectPublicIp();
+    if (publicIp) ip = publicIp;
+  }
+
+  const url = new URL(`${PRIMEEARN_BASE_URL}/${APP_TOKEN}/api/v1/offers/active`);
+  url.searchParams.set('app', APP_HASH);
+  url.searchParams.set('external_user_id', externalUserId);
+  url.searchParams.set('output', 'API');
+  if (ip) url.searchParams.set('ip', ip);
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (!response.ok) return res.status(response.status).json(data);
+    return res.json(data);
+  } catch {
+    return res.status(502).json({ status: 'error', message: 'Failed to reach PrimeEarn API.' });
+  }
+});
+
 app.get('/api/offers/:id', async (req, res) => {
   if (!APP_TOKEN || !APP_HASH) {
     return res.status(500).json({
@@ -139,6 +169,7 @@ app.get('/api/offers/:id', async (req, res) => {
 });
 
 // S2S postback receiver — logs all incoming GET/POST requests
+const SERVER_START_TIME = new Date().toISOString();
 const postbackLog = [];
 const MAX_LOG_ENTRIES = 200;
 
@@ -165,7 +196,7 @@ app.post('/postback', (req, res) => {
 });
 
 app.get('/api/postback-logs', (_req, res) => {
-  res.json({ logs: postbackLog });
+  res.json({ logs: postbackLog, serverStartTime: SERVER_START_TIME });
 });
 
 app.delete('/api/postback-logs', (_req, res) => {
