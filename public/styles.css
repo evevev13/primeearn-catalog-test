@@ -342,6 +342,20 @@ button:disabled {
 
 /* ── API Response tab ──────────────────────────────────────────────────────── */
 
+.api-response-block {
+  margin-bottom: 18px;
+}
+
+.api-response-label {
+  margin: 0 0 6px 2px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--muted);
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 .json-viewer-card {
   padding: 0;
   overflow: hidden;

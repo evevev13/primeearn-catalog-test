@@ -70,6 +70,7 @@ async function loadOfferDetails(offerId, externalUserId, ip, detailsContainer, b
     if (ip) params.set('ip', ip);
     const response = await fetch(`/api/offers/${encodeURIComponent(offerId)}?${params.toString()}`);
     const payload = await readResponsePayload(response);
+    updateOfferDetailsApiResponseView(payload);
     if (!response.ok) throw new Error(payload.message || 'Could not load details');
     const offer = payload.data || {};
     detailsContainer.innerHTML = createTaskMarkup(offer.rewards);
@@ -155,6 +156,14 @@ function updateApiResponseView(payload) {
   document.getElementById('apiResponseJson').textContent = JSON.stringify(payload, null, 2);
 }
 
+function updateInstalledApiResponseView(payload) {
+  document.getElementById('installedResponseJson').textContent = JSON.stringify(payload, null, 2);
+}
+
+function updateOfferDetailsApiResponseView(payload) {
+  document.getElementById('offerDetailsResponseJson').textContent = JSON.stringify(payload, null, 2);
+}
+
 // ── Load catalog ──────────────────────────────────────────────────────────────
 
 async function loadCatalog(evt) {
@@ -229,6 +238,7 @@ async function loadInstalled() {
     const response = await fetch(`/api/offers/active?${params.toString()}`);
     const payload = await readResponsePayload(response);
 
+    updateInstalledApiResponseView(payload);
     if (!response.ok) throw new Error(payload.message || 'Failed to load installed games');
 
     const offers = Array.isArray(payload.data) ? payload.data : [];
