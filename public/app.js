@@ -24,6 +24,14 @@ function switchTab(name) {
 
 tabBtns.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
 
+function getCredentials() {
+  const formData = new FormData(filtersForm);
+  return {
+    appToken: String(formData.get('appToken') || '').trim(),
+    appHash: String(formData.get('appHash') || '').trim(),
+  };
+}
+
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
 function setStatus(message, isError = false) {
@@ -68,6 +76,9 @@ async function loadOfferDetails(offerId, externalUserId, ip, detailsContainer, b
   try {
     const params = new URLSearchParams({ externalUserId });
     if (ip) params.set('ip', ip);
+    const { appToken, appHash } = getCredentials();
+    if (appToken) params.set('appToken', appToken);
+    if (appHash) params.set('appHash', appHash);
     const response = await fetch(`/api/offers/${encodeURIComponent(offerId)}?${params.toString()}`);
     const payload = await readResponsePayload(response);
     updateOfferDetailsApiResponseView(payload);
@@ -198,6 +209,9 @@ async function loadCatalog(evt) {
     if (gender) params.set('gender', gender);
     if (zip) params.set('zip', zip);
     if (limit) params.set('limit', limit);
+    const { appToken, appHash } = getCredentials();
+    if (appToken) params.set('appToken', appToken);
+    if (appHash) params.set('appHash', appHash);
 
     const response = await fetch(`/api/offers?${params.toString()}`);
     const payload = await readResponsePayload(response);
@@ -234,6 +248,9 @@ async function loadInstalled() {
   try {
     const params = new URLSearchParams({ externalUserId });
     if (ip) params.set('ip', ip);
+    const { appToken, appHash } = getCredentials();
+    if (appToken) params.set('appToken', appToken);
+    if (appHash) params.set('appHash', appHash);
 
     const response = await fetch(`/api/offers/active?${params.toString()}`);
     const payload = await readResponsePayload(response);

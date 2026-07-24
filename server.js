@@ -44,8 +44,15 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+function resolveCredentials(req) {
+  const token = String(req.query.appToken || '').trim() || APP_TOKEN;
+  const hash = String(req.query.appHash || '').trim() || APP_HASH;
+  return { token, hash };
+}
+
 app.get('/api/offers', async (req, res) => {
-  if (!APP_TOKEN || !APP_HASH) {
+  const { token, hash } = resolveCredentials(req);
+  if (!token || !hash) {
     return res.status(500).json({
       status: 'error',
       message: 'Missing APP_TOKEN or APP_HASH in server environment.',
@@ -66,8 +73,8 @@ app.get('/api/offers', async (req, res) => {
     if (publicIp) ip = publicIp;
   }
 
-  const url = new URL(`${PRIMEEARN_BASE_URL}/${APP_TOKEN}/api/v1/offers`);
-  url.searchParams.set('app', APP_HASH);
+  const url = new URL(`${PRIMEEARN_BASE_URL}/${token}/api/v1/offers`);
+  url.searchParams.set('app', hash);
   url.searchParams.set('external_user_id', externalUserId);
   url.searchParams.set('output', 'API');
   if (ip) url.searchParams.set('ip', ip);
@@ -97,7 +104,8 @@ app.get('/api/offers', async (req, res) => {
 });
 
 app.get('/api/offers/active', async (req, res) => {
-  if (!APP_TOKEN || !APP_HASH) {
+  const { token, hash } = resolveCredentials(req);
+  if (!token || !hash) {
     return res.status(500).json({ status: 'error', message: 'Missing APP_TOKEN or APP_HASH in server environment.' });
   }
 
@@ -110,8 +118,8 @@ app.get('/api/offers/active', async (req, res) => {
     if (publicIp) ip = publicIp;
   }
 
-  const url = new URL(`${PRIMEEARN_BASE_URL}/${APP_TOKEN}/api/v1/offers/active`);
-  url.searchParams.set('app', APP_HASH);
+  const url = new URL(`${PRIMEEARN_BASE_URL}/${token}/api/v1/offers/active`);
+  url.searchParams.set('app', hash);
   url.searchParams.set('external_user_id', externalUserId);
   url.searchParams.set('output', 'API');
   if (ip) url.searchParams.set('ip', ip);
@@ -127,7 +135,8 @@ app.get('/api/offers/active', async (req, res) => {
 });
 
 app.get('/api/offers/:id', async (req, res) => {
-  if (!APP_TOKEN || !APP_HASH) {
+  const { token, hash } = resolveCredentials(req);
+  if (!token || !hash) {
     return res.status(500).json({
       status: 'error',
       message: 'Missing APP_TOKEN or APP_HASH in server environment.',
@@ -145,8 +154,8 @@ app.get('/api/offers/:id', async (req, res) => {
     if (publicIp) ip = publicIp;
   }
 
-  const url = new URL(`${PRIMEEARN_BASE_URL}/${APP_TOKEN}/api/v1/offers/${encodeURIComponent(req.params.id)}`);
-  url.searchParams.set('app', APP_HASH);
+  const url = new URL(`${PRIMEEARN_BASE_URL}/${token}/api/v1/offers/${encodeURIComponent(req.params.id)}`);
+  url.searchParams.set('app', hash);
   url.searchParams.set('external_user_id', externalUserId);
   url.searchParams.set('output', 'API');
   if (ip) url.searchParams.set('ip', ip);

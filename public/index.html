@@ -22,6 +22,20 @@
 
       <section class="controls card">
         <form id="filters">
+          <details class="credentials-options">
+            <summary>Publisher credentials <span class="credentials-hint">(optional — overrides server defaults)</span></summary>
+            <div class="credentials-grid">
+              <label>
+                App Token
+                <input name="appToken" placeholder="e.g. yQn0wD9FckeNshND" autocomplete="off" />
+              </label>
+              <label>
+                App Hash
+                <input name="appHash" placeholder="e.g. sltVRszfuB" autocomplete="off" />
+              </label>
+            </div>
+          </details>
+
           <label>
             User ID
             <input id="externalUserId" name="externalUserId" value="test_user_001" required />
