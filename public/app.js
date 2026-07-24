@@ -79,6 +79,11 @@ async function loadOfferDetails(offerId, externalUserId, ip, detailsContainer, b
     const { appToken, appHash } = getCredentials();
     if (appToken) params.set('appToken', appToken);
     if (appHash) params.set('appHash', appHash);
+
+    updateCurlView('curlDetails', buildCurlCommand(`/api/v1/offers/${encodeURIComponent(offerId)}`, {
+      external_user_id: externalUserId, ip,
+    }));
+
     const response = await fetch(`/api/offers/${encodeURIComponent(offerId)}?${params.toString()}`);
     const payload = await readResponsePayload(response);
     updateOfferDetailsApiResponseView(payload);
@@ -161,6 +166,40 @@ function renderOffers(offers, externalUserId, ip) {
   });
 }
 
+// ── Curl tab ──────────────────────────────────────────────────────────────────
+
+const PRIMEEARN_BASE = 'https://partners.primeearn.com';
+
+function buildCurlCommand(path, queryParams) {
+  const { appToken, appHash } = getCredentials();
+  const token = appToken || '{APP_TOKEN}';
+  const hash = appHash || '{APP_HASH}';
+
+  const url = new URL(`${PRIMEEARN_BASE}/${token}${path}`);
+  url.searchParams.set('app', hash);
+  url.searchParams.set('output', 'API');
+  for (const [k, v] of Object.entries(queryParams)) {
+    if (v !== null && v !== undefined && v !== '') url.searchParams.set(k, v);
+  }
+  return `curl "${url.toString()}"`;
+}
+
+function updateCurlView(elementId, curl) {
+  const el = document.getElementById(elementId);
+  if (el) el.textContent = curl;
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.curl-copy-btn');
+  if (!btn) return;
+  const targetId = btn.dataset.target;
+  const text = document.getElementById(targetId)?.textContent || '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  });
+});
+
 // ── API Response tab ──────────────────────────────────────────────────────────
 
 function updateApiResponseView(payload) {
@@ -213,6 +252,10 @@ async function loadCatalog(evt) {
     if (appToken) params.set('appToken', appToken);
     if (appHash) params.set('appHash', appHash);
 
+    updateCurlView('curlOffers', buildCurlCommand('/api/v1/offers', {
+      external_user_id: externalUserId, platform, ip, maid, birthday, age, gender, zip, limit,
+    }));
+
     const response = await fetch(`/api/offers?${params.toString()}`);
     const payload = await readResponsePayload(response);
     updateApiResponseView(payload);
@@ -251,6 +294,10 @@ async function loadInstalled() {
     const { appToken, appHash } = getCredentials();
     if (appToken) params.set('appToken', appToken);
     if (appHash) params.set('appHash', appHash);
+
+    updateCurlView('curlActive', buildCurlCommand('/api/v1/offers/active', {
+      external_user_id: externalUserId, ip,
+    }));
 
     const response = await fetch(`/api/offers/active?${params.toString()}`);
     const payload = await readResponsePayload(response);

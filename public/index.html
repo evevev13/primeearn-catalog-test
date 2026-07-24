@@ -98,6 +98,7 @@
         <button class="tab-btn active" data-tab="catalog">Catalog</button>
         <button class="tab-btn" data-tab="installed">Installed</button>
         <button class="tab-btn" data-tab="api-response">API Response</button>
+        <button class="tab-btn" data-tab="curl">Curl Request</button>
         <button class="tab-btn" data-tab="postbacks">S2S Postbacks</button>
       </nav>
 
@@ -130,6 +131,30 @@
           <p class="api-response-label">GET /offers/:id</p>
           <div class="card json-viewer-card">
             <pre id="offerDetailsResponseJson" class="json-viewer">Click "Show Reward Tasks" on any offer to see the raw API response here.</pre>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-curl" class="tab-panel">
+        <div class="api-response-block">
+          <p class="api-response-label">GET /offers</p>
+          <div class="card json-viewer-card curl-card">
+            <button class="curl-copy-btn" data-target="curlOffers">Copy</button>
+            <pre id="curlOffers" class="json-viewer curl-viewer">Load the catalog to see the curl command here.</pre>
+          </div>
+        </div>
+        <div class="api-response-block">
+          <p class="api-response-label">GET /offers/active</p>
+          <div class="card json-viewer-card curl-card">
+            <button class="curl-copy-btn" data-target="curlActive">Copy</button>
+            <pre id="curlActive" class="json-viewer curl-viewer">Open the Installed tab to see the curl command here.</pre>
+          </div>
+        </div>
+        <div class="api-response-block">
+          <p class="api-response-label">GET /offers/:id</p>
+          <div class="card json-viewer-card curl-card">
+            <button class="curl-copy-btn" data-target="curlDetails">Copy</button>
+            <pre id="curlDetails" class="json-viewer curl-viewer">Click "Show Reward Tasks" on any offer to see the curl command here.</pre>
           </div>
         </div>
       </section>
