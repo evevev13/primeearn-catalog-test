@@ -177,6 +177,36 @@ app.get('/api/offers/:id', async (req, res) => {
   }
 });
 
+app.get('/api/static-feed', async (req, res) => {
+  const token = String(req.query.appToken || '').trim() || APP_TOKEN;
+  const hash  = String(req.query.appHash  || '').trim() || APP_HASH;
+
+  if (!token || !hash) {
+    return res.status(500).json({ status: 'error', message: 'Missing app token or app hash.' });
+  }
+
+  const url = new URL(`${PRIMEEARN_BASE_URL}/${token}/api/v1/offers/feed`);
+  url.searchParams.set('app', hash);
+
+  const perPage = String(req.query.per_page || '20').trim();
+  const page    = String(req.query.page     || '1').trim();
+  if (perPage) url.searchParams.set('per_page', perPage);
+  if (page)    url.searchParams.set('page',     page);
+
+  for (const v of [].concat(req.query['countries[]']      || [])) url.searchParams.append('countries[]',      v);
+  for (const v of [].concat(req.query['platform[]']       || [])) url.searchParams.append('platform[]',       v);
+  for (const v of [].concat(req.query['conversion_type[]']|| [])) url.searchParams.append('conversion_type[]',v);
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (!response.ok) return res.status(response.status).json(data);
+    return res.json(data);
+  } catch {
+    return res.status(502).json({ status: 'error', message: 'Failed to reach PrimeEarn Static Feed API.' });
+  }
+});
+
 // S2S postback receiver — logs all incoming GET/POST requests
 const SERVER_START_TIME = new Date().toISOString();
 const postbackLog = [];

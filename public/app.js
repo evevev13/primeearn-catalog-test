@@ -20,6 +20,9 @@ function switchTab(name) {
   if (name === 'installed') {
     loadInstalled();
   }
+  if (name === 'static-feed') {
+    loadStaticFeed(staticCurrentPage);
+  }
 }
 
 tabBtns.forEach((btn) => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
@@ -325,6 +328,140 @@ async function loadInstalled() {
 }
 
 document.getElementById('refreshInstalledBtn').addEventListener('click', loadInstalled);
+
+// ── Static Feed tab ───────────────────────────────────────────────────────────
+
+let staticCurrentPage = 1;
+let staticHasNext = false;
+
+function createEventMarkup(events = []) {
+  if (!Array.isArray(events) || events.length === 0) {
+    return '<p class="task-empty">No events returned.</p>';
+  }
+  return events
+    .map((e) => {
+      const label = e.name || 'Event';
+      const revenue = e.revenue_usd != null ? `$${Number(e.revenue_usd).toFixed(2)}` : 'N/A';
+      const points = e.points != null ? `${e.points} pts` : '';
+      return `<p class="task">${label} — <strong>${revenue}</strong>${points ? ` / ${points}` : ''}</p>`;
+    })
+    .join('');
+}
+
+function renderStaticOffers(offers) {
+  const grid = document.getElementById('staticGrid');
+  grid.innerHTML = '';
+  if (!offers.length) {
+    grid.innerHTML = '<p class="empty">No offers returned for these filters.</p>';
+    return;
+  }
+  offers.forEach((offer) => {
+    const clone = offerTemplate.content.cloneNode(true);
+
+    clone.querySelector('.banner').src = offer.large_image_url || offer.icon_url || 'https://placehold.co/800x450?text=Offer';
+    clone.querySelector('.title').textContent = offer.name || 'Untitled';
+
+    const countries = [...new Set((offer.geo_targets || []).map((g) => g.country_code))].join(', ') || 'All';
+    const platforms = (offer.platforms || []).join(', ') || 'All';
+    clone.querySelector('.meta').textContent = `${platforms} · ${countries} · Score: ${offer.score ?? '—'}`;
+    clone.querySelector('.install-time').textContent = offer.cpi ? `CPI: $${offer.cpi}` : offer.revenue_usd ? `Revenue: $${Number(offer.revenue_usd).toFixed(2)}` : '';
+    clone.querySelector('.reward').textContent = offer.points ? `Points: ${offer.points}` : '';
+
+    const playBtn = clone.querySelector('.play-btn');
+    playBtn.href = offer.tracking_url || '#';
+    if (!offer.tracking_url) {
+      playBtn.textContent = 'No tracking URL';
+      playBtn.classList.add('disabled');
+      playBtn.removeAttribute('target');
+    }
+
+    const detailsBtn = clone.querySelector('.details-btn');
+    detailsBtn.textContent = 'Show Events';
+    const detailsBox = clone.querySelector('.details');
+    detailsBtn.addEventListener('click', () => {
+      const isOpen = detailsBtn.dataset.open === 'true';
+      if (isOpen) {
+        detailsBox.classList.remove('open');
+        detailsBox.innerHTML = '';
+        detailsBtn.dataset.open = 'false';
+        detailsBtn.textContent = 'Show Events';
+      } else {
+        detailsBox.innerHTML = createEventMarkup(offer.events);
+        detailsBox.classList.add('open');
+        detailsBtn.dataset.open = 'true';
+        detailsBtn.textContent = 'Hide Events';
+      }
+    });
+
+    grid.appendChild(clone);
+  });
+}
+
+async function loadStaticFeed(page = 1) {
+  const form = document.getElementById('staticFilters');
+  const statusEl = document.getElementById('staticStatus');
+  const countEl = document.getElementById('staticCount');
+  const loadBtn = document.getElementById('loadStaticBtn');
+
+  const formData = new FormData(form);
+  const perPage = String(formData.get('per_page') || '20').trim();
+  const countries = String(formData.get('countries') || '').trim();
+  const platform = String(formData.get('platform') || '').trim();
+  const conversionType = String(formData.get('conversion_type') || '').trim();
+  const appToken = String(formData.get('appToken') || '').trim();
+  const appHash = String(formData.get('appHash') || '').trim();
+
+  statusEl.textContent = 'Loading…';
+  statusEl.classList.remove('error');
+  loadBtn.disabled = true;
+  document.getElementById('staticPrevBtn').disabled = true;
+  document.getElementById('staticNextBtn').disabled = true;
+
+  try {
+    const params = new URLSearchParams({ per_page: perPage, page: String(page) });
+    if (appToken) params.set('appToken', appToken);
+    if (appHash) params.set('appHash', appHash);
+    if (platform) params.append('platform[]', platform);
+    if (conversionType) params.append('conversion_type[]', conversionType);
+    if (countries) {
+      countries.split(',').map((c) => c.trim()).filter(Boolean).forEach((c) => params.append('countries[]', c));
+    }
+
+    const response = await fetch(`/api/static-feed?${params.toString()}`);
+    const payload = await readResponsePayload(response);
+    document.getElementById('staticResponseJson').textContent = JSON.stringify(payload, null, 2);
+
+    if (!response.ok) throw new Error(payload.message || 'Static feed request failed');
+
+    const offers = Array.isArray(payload.data) ? payload.data : [];
+    staticCurrentPage = payload.metadata?.page ?? page;
+    staticHasNext = Boolean(payload.metadata?.next);
+
+    renderStaticOffers(offers);
+    countEl.textContent = `${offers.length} offer(s) on page ${staticCurrentPage}`;
+    document.getElementById('staticPageIndicator').textContent = `Page ${staticCurrentPage}`;
+    statusEl.textContent = `Loaded ${offers.length} offer(s).`;
+
+    document.getElementById('staticPrevBtn').disabled = staticCurrentPage <= 1;
+    document.getElementById('staticNextBtn').disabled = !staticHasNext;
+  } catch (err) {
+    document.getElementById('staticGrid').innerHTML = '';
+    statusEl.textContent = err.message;
+    statusEl.classList.add('error');
+    countEl.textContent = '';
+  } finally {
+    loadBtn.disabled = false;
+  }
+}
+
+document.getElementById('staticFilters').addEventListener('submit', (e) => {
+  e.preventDefault();
+  staticCurrentPage = 1;
+  loadStaticFeed(1);
+});
+
+document.getElementById('staticPrevBtn').addEventListener('click', () => loadStaticFeed(staticCurrentPage - 1));
+document.getElementById('staticNextBtn').addEventListener('click', () => loadStaticFeed(staticCurrentPage + 1));
 
 // ── S2S Postback log ──────────────────────────────────────────────────────────
 

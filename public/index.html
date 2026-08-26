@@ -97,6 +97,7 @@
       <nav class="tabs">
         <button class="tab-btn active" data-tab="catalog">Catalog</button>
         <button class="tab-btn" data-tab="installed">Installed</button>
+        <button class="tab-btn" data-tab="static-feed">Static Feed</button>
         <button class="tab-btn" data-tab="api-response">API Response</button>
         <button class="tab-btn" data-tab="curl">Curl Request</button>
         <button class="tab-btn" data-tab="postbacks">S2S Postbacks</button>
@@ -112,6 +113,68 @@
           <button id="refreshInstalledBtn" type="button" class="btn-secondary">Refresh</button>
         </div>
         <div id="installedGrid" class="grid"></div>
+      </section>
+
+      <section id="tab-static-feed" class="tab-panel">
+        <section class="controls card">
+          <form id="staticFilters">
+            <label>
+              Per Page
+              <input id="staticPerPage" name="per_page" type="number" min="1" max="500" value="20" />
+            </label>
+            <label>
+              Countries
+              <input id="staticCountries" name="countries" placeholder="US, DE, GB (blank = all)" />
+            </label>
+            <label>
+              Platform
+              <select id="staticPlatform" name="platform">
+                <option value="">All</option>
+                <option value="ios">iOS</option>
+                <option value="android">Android</option>
+                <option value="web">Web</option>
+              </select>
+            </label>
+            <label>
+              Conversion Type
+              <select id="staticConversionType" name="conversion_type">
+                <option value="">All</option>
+                <option value="cpi">CPI</option>
+                <option value="cpa">CPA</option>
+              </select>
+            </label>
+            <button type="submit" id="loadStaticBtn">Load Feed</button>
+            <details class="advanced-options">
+              <summary>Credentials override</summary>
+              <div class="advanced-grid">
+                <label>
+                  App Token
+                  <input id="staticAppToken" name="appToken" placeholder="Leave blank to use server default" />
+                </label>
+                <label>
+                  App Hash
+                  <input id="staticAppHash" name="appHash" placeholder="Leave blank to use server default" />
+                </label>
+              </div>
+            </details>
+          </form>
+          <p id="staticStatus" class="status">Ready.</p>
+        </section>
+        <div class="tab-toolbar">
+          <span id="staticCount" class="tab-count"></span>
+          <div style="display:flex;gap:8px">
+            <button id="staticPrevBtn" type="button" class="btn-secondary" disabled>← Prev</button>
+            <span id="staticPageIndicator" style="align-self:center;font-size:0.85rem;color:var(--text-muted,#888)"></span>
+            <button id="staticNextBtn" type="button" class="btn-secondary" disabled>Next →</button>
+          </div>
+        </div>
+        <div class="api-response-block">
+          <p class="api-response-label">GET /api/v1/offers/feed</p>
+          <div class="card json-viewer-card">
+            <pre id="staticResponseJson" class="json-viewer">Load the feed to see the raw API response here.</pre>
+          </div>
+        </div>
+        <div id="staticGrid" class="grid"></div>
       </section>
 
       <section id="tab-api-response" class="tab-panel">
