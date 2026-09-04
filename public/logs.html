@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PrimeEarn Catalog Test — Login Logs</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-a"></div>
+    <div class="bg-shape bg-shape-b"></div>
+
+    <nav class="user-nav">
+      <a href="/" class="user-nav-back">← Back to app</a>
+      <div class="user-nav-right">
+        <span class="user-nav-email" id="userEmail"></span>
+        <a href="/auth/logout" class="user-nav-logout">Sign out</a>
+      </div>
+    </nav>
+
+    <main class="container">
+      <header class="hero">
+        <p class="kicker">Admin</p>
+        <h1>Login Logs</h1>
+        <p class="subtitle">All sign-ins to this tool. Resets on each server restart/deploy.</p>
+      </header>
+
+      <section class="card logs-card">
+        <div class="logs-toolbar">
+          <span id="logsCount" class="tab-count"></span>
+          <button id="refreshBtn" type="button" class="btn-secondary">Refresh</button>
+        </div>
+        <div id="logsTableWrap">
+          <table class="logs-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Name</th>
+                <th>Logged in</th>
+              </tr>
+            </thead>
+            <tbody id="logsBody">
+              <tr><td colspan="3" class="logs-empty">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      async function loadLogs() {
+        const tbody = document.getElementById('logsBody');
+        const countEl = document.getElementById('logsCount');
+        try {
+          const res = await fetch('/api/login-logs');
+          if (res.status === 403) {
+            tbody.innerHTML = '<tr><td colspan="3" class="logs-empty">Access denied.</td></tr>';
+            return;
+          }
+          const { logs } = await res.json();
+          countEl.textContent = `${logs.length} login${logs.length !== 1 ? 's' : ''}`;
+          if (!logs.length) {
+            tbody.innerHTML = '<tr><td colspan="3" class="logs-empty">No logins recorded yet.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = logs.map((l) => `
+            <tr>
+              <td class="logs-email">${escHtml(l.email)}</td>
+              <td>${escHtml(l.name)}</td>
+              <td class="logs-time">${new Date(l.timestamp).toLocaleString()}</td>
+            </tr>
+          `).join('');
+        } catch {
+          tbody.innerHTML = '<tr><td colspan="3" class="logs-empty">Failed to load logs.</td></tr>';
+        }
+      }
+
+      async function loadUser() {
+        try {
+          const res = await fetch('/api/me');
+          if (!res.ok) { window.location.href = '/login'; return; }
+          const user = await res.json();
+          document.getElementById('userEmail').textContent = user.email;
+        } catch {
+          window.location.href = '/login';
+        }
+      }
+
+      function escHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      }
+
+      document.getElementById('refreshBtn').addEventListener('click', loadLogs);
+
+      loadUser();
+      loadLogs();
+    </script>
+  </body>
+</html>

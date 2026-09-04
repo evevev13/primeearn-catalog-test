@@ -532,7 +532,24 @@ document.getElementById('clearPostbacksBtn').addEventListener('click', async () 
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
+async function initUser() {
+  try {
+    const res = await fetch('/api/me');
+    if (!res.ok) { window.location.href = '/login'; return; }
+    const user = await res.json();
+    const emailEl = document.getElementById('userEmail');
+    if (emailEl) emailEl.textContent = user.name || user.email;
+    if (user.isAdmin) {
+      const logsLink = document.getElementById('logsLink');
+      if (logsLink) logsLink.style.display = '';
+    }
+  } catch {
+    window.location.href = '/login';
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
+  initUser();
   document.getElementById('postbackUrl').textContent = window.location.origin + '/postback';
   loadCatalog();
 });

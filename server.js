@@ -1,5 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
+import session from 'express-session';
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -8,20 +11,74 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
+app.set('trust proxy', 1);
 
 const APP_TOKEN = process.env.APP_TOKEN;
 const APP_HASH = process.env.APP_HASH;
 const PRIMEEARN_BASE_URL = 'https://partners.primeearn.com';
+const ADMIN_EMAIL = 'evgeny.b@primeinsights.com';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-app.use(express.static(path.join(__dirname, 'public')));
+// Serve static assets without auth, but don't auto-serve index.html
+app.use(express.static(path.join(__dirname, 'public'), { index: false }));
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret-change-in-prod',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  },
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Login log (in-memory, resets on restart)
+const loginLog = [];
+
+passport.use(new GoogleStrategy(
+  {
+    clientID: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackURL: '/auth/google/callback',
+    proxy: true,
+  },
+  (accessToken, refreshToken, profile, done) => {
+    const email = profile.emails?.[0]?.value || '';
+    if (!email.endsWith('@primeinsights.com')) {
+      return done(null, false);
+    }
+    loginLog.unshift({
+      email,
+      name: profile.displayName,
+      timestamp: new Date().toISOString(),
+    });
+    if (loginLog.length > 500) loginLog.length = 500;
+    return done(null, { email, name: profile.displayName });
+  }
+));
+
+passport.serializeUser((user, done) => done(null, user));
+passport.deserializeUser((user, done) => done(null, user));
+
+function requireAuth(req, res, next) {
+  if (req.isAuthenticated()) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorized' });
+  res.redirect('/login');
+}
+
+function requireAdmin(req, res, next) {
+  if (req.user?.email === ADMIN_EMAIL) return next();
+  if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Forbidden' });
+  res.status(403).send('Access denied.');
+}
 
 function getClientIp(req) {
   const xff = req.headers['x-forwarded-for'];
-  if (xff) {
-    return String(xff).split(',')[0].trim();
-  }
+  if (xff) return String(xff).split(',')[0].trim();
   return req.socket.remoteAddress || '';
 }
 
@@ -36,12 +93,49 @@ async function detectPublicIp() {
   }
 }
 
-app.get('/api/health', (_req, res) => {
-  res.json({
-    ok: true,
-    hasToken: Boolean(APP_TOKEN),
-    hasAppHash: Boolean(APP_HASH),
+// ── Public routes ─────────────────────────────────────────────────────────────
+
+app.get('/login', (req, res) => {
+  if (req.isAuthenticated()) return res.redirect('/');
+  res.sendFile(path.join(__dirname, 'public/login.html'));
+});
+
+app.get('/auth/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
+
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/login?error=1' }),
+  (req, res) => res.redirect('/')
+);
+
+app.get('/auth/logout', (req, res, next) => {
+  req.logout((err) => {
+    if (err) return next(err);
+    res.redirect('/login');
   });
+});
+
+// ── All routes below require authentication ───────────────────────────────────
+
+app.use(requireAuth);
+
+app.get('/api/me', (req, res) => {
+  res.json({
+    email: req.user.email,
+    name: req.user.name,
+    isAdmin: req.user.email === ADMIN_EMAIL,
+  });
+});
+
+app.get('/api/login-logs', requireAdmin, (_req, res) => {
+  res.json({ logs: loginLog });
+});
+
+app.get('/logs', requireAdmin, (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public/logs.html'));
+});
+
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, hasToken: Boolean(APP_TOKEN), hasAppHash: Boolean(APP_HASH) });
 });
 
 function resolveCredentials(req) {
@@ -53,21 +147,14 @@ function resolveCredentials(req) {
 app.get('/api/offers', async (req, res) => {
   const { token, hash } = resolveCredentials(req);
   if (!token || !hash) {
-    return res.status(500).json({
-      status: 'error',
-      message: 'Missing APP_TOKEN or APP_HASH in server environment.',
-    });
+    return res.status(500).json({ status: 'error', message: 'Missing APP_TOKEN or APP_HASH in server environment.' });
   }
 
   const externalUserId = String(req.query.externalUserId || 'test_user_001');
   const platform = String(req.query.platform || 'web');
 
   let ip = String(req.query.ip || '').trim();
-  if (!ip) {
-    ip = getClientIp(req);
-  }
-
-  // Local dev addresses are not usable for targeting, so we fallback to public IP lookup.
+  if (!ip) ip = getClientIp(req);
   if (!ip || ip.includes('127.0.0.1') || ip.includes('::1') || ip.startsWith('192.168.') || ip.startsWith('10.')) {
     const publicIp = await detectPublicIp();
     if (publicIp) ip = publicIp;
@@ -80,7 +167,6 @@ app.get('/api/offers', async (req, res) => {
   if (ip) url.searchParams.set('ip', ip);
   if (platform) url.searchParams.set('platform', platform);
 
-  // Optional targeting params
   for (const param of ['maid', 'birthday', 'age', 'gender', 'zip', 'limit']) {
     const val = String(req.query[param] || '').trim();
     if (val) url.searchParams.set(param, val);
@@ -89,17 +175,10 @@ app.get('/api/offers', async (req, res) => {
   try {
     const response = await fetch(url);
     const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json(data);
-    }
-
+    if (!response.ok) return res.status(response.status).json(data);
     return res.json(data);
   } catch {
-    return res.status(502).json({
-      status: 'error',
-      message: 'Failed to reach PrimeEarn API.',
-    });
+    return res.status(502).json({ status: 'error', message: 'Failed to reach PrimeEarn API.' });
   }
 });
 
@@ -112,7 +191,6 @@ app.get('/api/offers/active', async (req, res) => {
   const externalUserId = String(req.query.externalUserId || 'test_user_001');
   let ip = String(req.query.ip || '').trim();
   if (!ip) ip = getClientIp(req);
-
   if (!ip || ip.includes('127.0.0.1') || ip.includes('::1') || ip.startsWith('192.168.') || ip.startsWith('10.')) {
     const publicIp = await detectPublicIp();
     if (publicIp) ip = publicIp;
@@ -137,18 +215,12 @@ app.get('/api/offers/active', async (req, res) => {
 app.get('/api/offers/:id', async (req, res) => {
   const { token, hash } = resolveCredentials(req);
   if (!token || !hash) {
-    return res.status(500).json({
-      status: 'error',
-      message: 'Missing APP_TOKEN or APP_HASH in server environment.',
-    });
+    return res.status(500).json({ status: 'error', message: 'Missing APP_TOKEN or APP_HASH in server environment.' });
   }
 
   const externalUserId = String(req.query.externalUserId || 'test_user_001');
   let ip = String(req.query.ip || '').trim();
-  if (!ip) {
-    ip = getClientIp(req);
-  }
-
+  if (!ip) ip = getClientIp(req);
   if (!ip || ip.includes('127.0.0.1') || ip.includes('::1') || ip.startsWith('192.168.') || ip.startsWith('10.')) {
     const publicIp = await detectPublicIp();
     if (publicIp) ip = publicIp;
@@ -163,17 +235,10 @@ app.get('/api/offers/:id', async (req, res) => {
   try {
     const response = await fetch(url);
     const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json(data);
-    }
-
+    if (!response.ok) return res.status(response.status).json(data);
     return res.json(data);
   } catch {
-    return res.status(502).json({
-      status: 'error',
-      message: 'Failed to reach PrimeEarn API.',
-    });
+    return res.status(502).json({ status: 'error', message: 'Failed to reach PrimeEarn API.' });
   }
 });
 
@@ -193,9 +258,9 @@ app.get('/api/static-feed', async (req, res) => {
   if (perPage) url.searchParams.set('per_page', perPage);
   if (page)    url.searchParams.set('page',     page);
 
-  for (const v of [].concat(req.query['countries[]']      || [])) url.searchParams.append('countries[]',      v);
-  for (const v of [].concat(req.query['platform[]']       || [])) url.searchParams.append('platform[]',       v);
-  for (const v of [].concat(req.query['conversion_type[]']|| [])) url.searchParams.append('conversion_type[]',v);
+  for (const v of [].concat(req.query['countries[]']       || [])) url.searchParams.append('countries[]',       v);
+  for (const v of [].concat(req.query['platform[]']        || [])) url.searchParams.append('platform[]',        v);
+  for (const v of [].concat(req.query['conversion_type[]'] || [])) url.searchParams.append('conversion_type[]', v);
 
   try {
     const response = await fetch(url);
@@ -207,7 +272,8 @@ app.get('/api/static-feed', async (req, res) => {
   }
 });
 
-// S2S postback receiver — logs all incoming GET/POST requests
+// ── S2S postback receiver ─────────────────────────────────────────────────────
+
 const SERVER_START_TIME = new Date().toISOString();
 const postbackLog = [];
 const MAX_LOG_ENTRIES = 200;

@@ -13,3 +13,9 @@ services:
         value: sltVRszfuB
       - key: NODE_VERSION
         value: 24
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: SESSION_SECRET
+        sync: false
