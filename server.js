@@ -39,27 +39,31 @@ app.use(passport.session());
 // Login log (in-memory, resets on restart)
 const loginLog = [];
 
-passport.use(new GoogleStrategy(
-  {
-    clientID: process.env.GOOGLE_CLIENT_ID,
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: '/auth/google/callback',
-    proxy: true,
-  },
-  (accessToken, refreshToken, profile, done) => {
-    const email = profile.emails?.[0]?.value || '';
-    if (!email.endsWith('@primeinsights.com')) {
-      return done(null, false);
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  passport.use(new GoogleStrategy(
+    {
+      clientID: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      callbackURL: '/auth/google/callback',
+      proxy: true,
+    },
+    (accessToken, refreshToken, profile, done) => {
+      const email = profile.emails?.[0]?.value || '';
+      if (!email.endsWith('@primeinsights.com')) {
+        return done(null, false);
+      }
+      loginLog.unshift({
+        email,
+        name: profile.displayName,
+        timestamp: new Date().toISOString(),
+      });
+      if (loginLog.length > 500) loginLog.length = 500;
+      return done(null, { email, name: profile.displayName });
     }
-    loginLog.unshift({
-      email,
-      name: profile.displayName,
-      timestamp: new Date().toISOString(),
-    });
-    if (loginLog.length > 500) loginLog.length = 500;
-    return done(null, { email, name: profile.displayName });
-  }
-));
+  ));
+} else {
+  console.warn('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET not set — Google OAuth disabled.');
+}
 
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
@@ -100,12 +104,16 @@ app.get('/login', (req, res) => {
   res.sendFile(path.join(__dirname, 'public/login.html'));
 });
 
-app.get('/auth/google', passport.authenticate('google', { scope: ['email', 'profile'] }));
+app.get('/auth/google', (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(503).send('Google OAuth is not configured on this server yet. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables.');
+  }
+  passport.authenticate('google', { scope: ['email', 'profile'] })(req, res, next);
+});
 
-app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login?error=1' }),
-  (req, res) => res.redirect('/')
-);
+app.get('/auth/google/callback', (req, res, next) => {
+  passport.authenticate('google', { failureRedirect: '/login?error=1' })(req, res, next);
+}, (req, res) => res.redirect('/'));
 
 app.get('/auth/logout', (req, res, next) => {
   req.logout((err) => {
