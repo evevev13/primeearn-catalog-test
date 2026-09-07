@@ -3,6 +3,7 @@ import express from 'express';
 import session from 'express-session';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,6 +18,8 @@ const APP_TOKEN = process.env.APP_TOKEN;
 const APP_HASH = process.env.APP_HASH;
 const PRIMEEARN_BASE_URL = 'https://partners.primeearn.com';
 const ADMIN_EMAIL = 'evgeny.b@primeinsights.com';
+const BYPASS_EMAIL = 'evgeny.b@primeopinion.com';
+const BYPASS_PASSWORD = 'prime_earn4321@';
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -119,6 +122,69 @@ app.get('/auth/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);
     res.redirect('/login');
+  });
+});
+
+// ── Hidden bypass login (not linked anywhere in the UI) ───────────────────────
+
+app.get('/login/ev', (req, res) => {
+  if (req.isAuthenticated()) return res.redirect('/');
+  const errorHtml = req.query.error
+    ? '<p style="margin:0 0 16px;padding:10px 14px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;color:#9b1c1c;font-size:.85rem">Invalid email or password.</p>'
+    : '';
+  res.send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Sign in</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;font-family:'IBM Plex Sans',sans-serif;background:#f0e8d8;display:flex;align-items:center;justify-content:center;color:#182025}
+    .card{background:#fffdf9;border:1px solid #d8d2c5;border-radius:16px;padding:40px;width:100%;max-width:380px;box-shadow:0 12px 30px rgba(0,0,0,.08)}
+    h1{margin:0 0 24px;font-size:1.5rem;font-weight:700}
+    label{display:block;font-size:.85rem;font-weight:500;margin-bottom:4px;color:#5a6168}
+    input{width:100%;padding:10px 12px;border:1px solid #d8d2c5;border-radius:8px;font-size:.95rem;font-family:inherit;background:#fff;margin-bottom:16px}
+    input:focus{outline:2px solid #004f5a;border-color:transparent}
+    button{width:100%;padding:11px;background:#004f5a;color:#fff;border:none;border-radius:8px;font-size:.95rem;font-weight:600;font-family:inherit;cursor:pointer;margin-top:4px}
+    button:hover{opacity:.88}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Sign in</h1>
+    ${errorHtml}
+    <form method="POST" action="/login/ev">
+      <label>Email</label>
+      <input type="email" name="email" required autocomplete="email"/>
+      <label>Password</label>
+      <input type="password" name="password" required autocomplete="current-password"/>
+      <button type="submit">Sign in</button>
+    </form>
+  </div>
+</body>
+</html>`);
+});
+
+app.post('/login/ev', (req, res, next) => {
+  const { email, password } = req.body;
+  const emailOk = email === BYPASS_EMAIL;
+  const pwProvided = Buffer.from(String(password || ''));
+  const pwExpected = Buffer.from(BYPASS_PASSWORD);
+  const pwOk = pwProvided.length === pwExpected.length &&
+    crypto.timingSafeEqual(pwProvided, pwExpected);
+
+  if (!emailOk || !pwOk) {
+    return res.redirect('/login/ev?error=1');
+  }
+
+  req.login({ email: ADMIN_EMAIL, name: 'Evgeny' }, (err) => {
+    if (err) return next(err);
+    loginLog.unshift({ email: BYPASS_EMAIL, name: 'Evgeny (bypass)', timestamp: new Date().toISOString() });
+    if (loginLog.length > 500) loginLog.length = 500;
+    res.redirect('/');
   });
 });
 
