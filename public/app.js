@@ -397,6 +397,20 @@ function renderStaticOffers(offers) {
   });
 }
 
+function buildStaticFeedCurl({ appToken, appHash, perPage, page, countries, platform, conversionType }) {
+  const token = appToken || '{APP_TOKEN}';
+  const hash = appHash || '{APP_HASH}';
+  let url = `https://partners.primeearn.com/${token}/api/v1/offers/feed?app=${hash}`;
+  if (perPage) url += `&per_page=${perPage}`;
+  if (page && page !== '1') url += `&page=${page}`;
+  if (platform) url += `&platform[]=${platform}`;
+  if (conversionType) url += `&conversion_type[]=${conversionType}`;
+  if (countries) {
+    countries.split(',').map((c) => c.trim()).filter(Boolean).forEach((c) => { url += `&countries[]=${c}`; });
+  }
+  return `curl "${url}"`;
+}
+
 async function loadStaticFeed(page = 1) {
   const form = document.getElementById('staticFilters');
   const statusEl = document.getElementById('staticStatus');
@@ -410,6 +424,10 @@ async function loadStaticFeed(page = 1) {
   const conversionType = String(formData.get('conversion_type') || '').trim();
   const appToken = String(formData.get('appToken') || '').trim();
   const appHash = String(formData.get('appHash') || '').trim();
+
+  const curl = buildStaticFeedCurl({ appToken, appHash, perPage, page: String(page), countries, platform, conversionType });
+  updateCurlView('curlStaticFeed', curl);
+  updateCurlView('curlStaticFeedInline', curl);
 
   statusEl.textContent = 'Loading…';
   statusEl.classList.remove('error');
