@@ -109,6 +109,7 @@
         <button class="tab-btn" data-tab="api-response">API Response</button>
         <button class="tab-btn" data-tab="curl">Curl Request</button>
         <button class="tab-btn" data-tab="postbacks">S2S Postbacks</button>
+        <button class="tab-btn" data-tab="script-test">Script Test</button>
       </nav>
 
       <section id="tab-catalog" class="tab-panel active">
@@ -259,6 +260,95 @@
         </div>
         <p id="serverStartTime" class="server-uptime"></p>
         <div id="postbackLog"></div>
+      </section>
+
+      <section id="tab-script-test" class="tab-panel">
+        <div class="script-test-layout">
+          <section class="controls card script-config-card">
+            <form id="scriptConfigForm">
+              <div class="script-config-grid">
+                <label>
+                  Module
+                  <select id="stModule" name="module">
+                    <option value="offers">offers</option>
+                    <option value="offers-carousel">offers-carousel</option>
+                    <option value="surveys">surveys</option>
+                  </select>
+                </label>
+                <label>
+                  User ID
+                  <input id="stUserId" name="userId" value="test_user_001" />
+                </label>
+                <label>
+                  Platform
+                  <select id="stPlatform" name="platform">
+                    <option value="web">web</option>
+                    <option value="ios">ios</option>
+                    <option value="android">android</option>
+                  </select>
+                </label>
+                <label>
+                  Layout
+                  <select id="stLayout" name="layout">
+                    <option value="">— default —</option>
+                    <option value="default">default (grid)</option>
+                    <option value="vertical">vertical (list)</option>
+                    <option value="horizontal">horizontal (carousel)</option>
+                  </select>
+                </label>
+                <label>
+                  Column Qty
+                  <input id="stColumnQty" name="columnQty" type="number" min="1" max="6" placeholder="3" />
+                </label>
+                <label>
+                  Limit
+                  <input id="stLimit" name="limit" type="number" min="1" placeholder="— none —" />
+                </label>
+              </div>
+
+              <details class="advanced-options" style="margin-top:12px">
+                <summary>App credentials &amp; custom design</summary>
+                <div class="script-config-grid" style="margin-top:10px">
+                  <label>
+                    App ID
+                    <input id="stAppId" name="appId" placeholder="leave blank to use server default" autocomplete="off" />
+                  </label>
+                  <label>
+                    Primary color
+                    <div class="color-input-row">
+                      <input id="stPrimaryColor" name="primaryColor" type="color" value="#5B6CFF" />
+                      <input id="stPrimaryColorHex" type="text" value="#5B6CFF" maxlength="9" placeholder="#5B6CFF" />
+                      <label class="color-toggle"><input id="stPrimaryColorEnabled" type="checkbox" /><span>apply</span></label>
+                    </div>
+                  </label>
+                  <label>
+                    Background color
+                    <div class="color-input-row">
+                      <input id="stBgColor" name="bgColor" type="color" value="#0F1115" />
+                      <input id="stBgColorHex" type="text" value="#0F1115" maxlength="9" placeholder="#0F1115" />
+                      <label class="color-toggle"><input id="stBgColorEnabled" type="checkbox" /><span>apply</span></label>
+                    </div>
+                  </label>
+                </div>
+              </details>
+
+              <button type="submit" id="stLoadBtn" style="margin-top:16px">Load Preview</button>
+            </form>
+          </section>
+
+          <div class="script-code-block api-response-block">
+            <p class="api-response-label">Generated window.psConfig</p>
+            <div class="card json-viewer-card curl-card">
+              <button class="curl-copy-btn" data-target="stGeneratedCode">Copy</button>
+              <pre id="stGeneratedCode" class="json-viewer curl-viewer"></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="script-preview-wrap">
+          <p class="api-response-label">Live preview</p>
+          <iframe id="stPreviewFrame" class="script-preview-frame" src="about:blank" title="Script preview"></iframe>
+        </div>
       </section>
     </main>
 

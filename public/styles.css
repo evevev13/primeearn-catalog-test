@@ -676,3 +676,77 @@ button:disabled {
   text-align: center;
   padding: 32px 12px;
 }
+
+/* ── Script Test tab ───────────────────────────────────────────────────────── */
+
+.script-test-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+@media (max-width: 740px) {
+  .script-test-layout { grid-template-columns: 1fr; }
+}
+
+.script-config-card { padding: 20px; }
+
+.script-config-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 500px) {
+  .script-config-grid { grid-template-columns: 1fr; }
+}
+
+.script-code-block { margin: 0; }
+
+.color-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.color-input-row input[type="color"] {
+  width: 36px;
+  height: 36px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.color-input-row input[type="text"] {
+  width: 90px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.82rem;
+}
+
+.color-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.color-toggle input { cursor: pointer; }
+
+.script-preview-wrap {
+  margin-top: 20px;
+}
+
+.script-preview-frame {
+  width: 100%;
+  height: 680px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}

@@ -208,6 +208,58 @@ app.get('/logs', requireAdmin, (_req, res) => {
   res.sendFile(path.join(__dirname, 'public/logs.html'));
 });
 
+app.get('/script-preview', (req, res) => {
+  const allowedModules   = ['offers', 'offers-carousel', 'surveys'];
+  const allowedPlatforms = ['web', 'ios', 'android'];
+  const allowedLayouts   = ['default', 'vertical', 'horizontal'];
+
+  const appId    = String(req.query.appId    || APP_TOKEN || '').trim();
+  const userId   = String(req.query.userId   || 'test_user_001').trim();
+  const module   = allowedModules.includes(req.query.module)     ? req.query.module   : 'offers';
+  const platform = allowedPlatforms.includes(req.query.platform) ? req.query.platform : '';
+  const layout   = allowedLayouts.includes(req.query.layout)     ? req.query.layout   : '';
+  const columnQty = parseInt(req.query.columnQty) || 0;
+  const limit     = parseInt(req.query.limit)     || 0;
+  const primaryColor = /^#[0-9a-fA-F]{3,8}$/.test(req.query.primaryColor || '') ? req.query.primaryColor : '';
+  const bgColor      = /^#[0-9a-fA-F]{3,8}$/.test(req.query.bgColor      || '') ? req.query.bgColor      : '';
+
+  const config = { container: '#primeearn-widget', appId, userId, module };
+  if (platform) config.platform = platform;
+  if (layout)   config.layout   = layout;
+  if (columnQty > 0) config.columnQty = columnQty;
+  if (limit > 0)     config.limit     = limit;
+  if (primaryColor || bgColor) {
+    config.customAppDesign = {};
+    if (primaryColor) config.customAppDesign['--p-primary-500'] = primaryColor;
+    if (bgColor)      config.customAppDesign['--ps-pages-bg']   = bgColor;
+  }
+
+  // Escape <, >, & so the JSON literal is safe inside a <script> tag
+  const configJson = JSON.stringify(config, null, 2)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026');
+
+  res.send(`<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Script Preview</title>
+  <style>body{margin:0;padding:0}#primeearn-widget{width:100%;min-height:600px}</style>
+</head>
+<body>
+  <div id="primeearn-widget"></div>
+  <script>
+  (function(){
+    window.psConfig = ${configJson};
+    var s = document.createElement('script');
+    s.src = 'https://monetize.primeearn.com/ext/integration2.js?v=' + Date.now();
+    document.head.appendChild(s);
+  })();
+  </script>
+</body>
+</html>`);
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, hasToken: Boolean(APP_TOKEN), hasAppHash: Boolean(APP_HASH) });
 });

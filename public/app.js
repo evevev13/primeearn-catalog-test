@@ -548,6 +548,94 @@ document.getElementById('clearPostbacksBtn').addEventListener('click', async () 
   fetchPostbackLogs();
 });
 
+// ── Script Test tab ───────────────────────────────────────────────────────────
+
+function scriptTestConfig() {
+  const val = (id) => document.getElementById(id)?.value.trim() || '';
+  const appId        = val('stAppId');
+  const userId       = val('stUserId') || 'test_user_001';
+  const module       = val('stModule') || 'offers';
+  const platform     = val('stPlatform');
+  const layout       = val('stLayout');
+  const columnQty    = parseInt(val('stColumnQty')) || 0;
+  const limit        = parseInt(val('stLimit')) || 0;
+  const primaryOn    = document.getElementById('stPrimaryColorEnabled')?.checked;
+  const bgOn         = document.getElementById('stBgColorEnabled')?.checked;
+  const primaryColor = primaryOn ? (val('stPrimaryColorHex') || val('stPrimaryColor')) : '';
+  const bgColor      = bgOn     ? (val('stBgColorHex')      || val('stBgColor'))      : '';
+  return { appId, userId, module, platform, layout, columnQty, limit, primaryColor, bgColor };
+}
+
+function buildScriptConfigDisplay(cfg) {
+  const config = {
+    container: '#primeearn-widget',
+    appId: cfg.appId || '{APP_ID}',
+    userId: cfg.userId,
+    module: cfg.module,
+  };
+  if (cfg.platform) config.platform = cfg.platform;
+  if (cfg.layout)   config.layout   = cfg.layout;
+  if (cfg.columnQty > 0) config.columnQty = cfg.columnQty;
+  if (cfg.limit > 0)     config.limit     = cfg.limit;
+  if (cfg.primaryColor || cfg.bgColor) {
+    config.customAppDesign = {};
+    if (cfg.primaryColor) config.customAppDesign['--p-primary-500'] = cfg.primaryColor;
+    if (cfg.bgColor)      config.customAppDesign['--ps-pages-bg']   = cfg.bgColor;
+  }
+  return `window.psConfig = ${JSON.stringify(config, null, 2)};`;
+}
+
+function buildScriptPreviewUrl(cfg) {
+  const params = new URLSearchParams({ module: cfg.module, userId: cfg.userId });
+  if (cfg.appId)       params.set('appId', cfg.appId);
+  if (cfg.platform)    params.set('platform', cfg.platform);
+  if (cfg.layout)      params.set('layout', cfg.layout);
+  if (cfg.columnQty > 0) params.set('columnQty', String(cfg.columnQty));
+  if (cfg.limit > 0)     params.set('limit', String(cfg.limit));
+  if (cfg.primaryColor)  params.set('primaryColor', cfg.primaryColor);
+  if (cfg.bgColor)       params.set('bgColor', cfg.bgColor);
+  return `/script-preview?${params.toString()}`;
+}
+
+function syncColorHex(colorInputId, hexInputId) {
+  const colorEl = document.getElementById(colorInputId);
+  const hexEl   = document.getElementById(hexInputId);
+  if (!colorEl || !hexEl) return;
+  colorEl.addEventListener('input', () => { hexEl.value = colorEl.value; updateScriptCode(); });
+  hexEl.addEventListener('input', () => {
+    if (/^#[0-9a-fA-F]{3,8}$/.test(hexEl.value)) colorEl.value = hexEl.value;
+    updateScriptCode();
+  });
+}
+
+function updateScriptCode() {
+  const cfg = scriptTestConfig();
+  const el = document.getElementById('stGeneratedCode');
+  if (el) el.textContent = buildScriptConfigDisplay(cfg);
+}
+
+function initScriptTestTab() {
+  const form = document.getElementById('scriptConfigForm');
+  if (!form) return;
+
+  syncColorHex('stPrimaryColor', 'stPrimaryColorHex');
+  syncColorHex('stBgColor', 'stBgColorHex');
+
+  form.querySelectorAll('select, input[type=text], input[type=number], input[type=checkbox]').forEach((el) => {
+    el.addEventListener('input', updateScriptCode);
+    el.addEventListener('change', updateScriptCode);
+  });
+
+  updateScriptCode();
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const cfg = scriptTestConfig();
+    const frame = document.getElementById('stPreviewFrame');
+    if (frame) frame.src = buildScriptPreviewUrl(cfg);
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function initUser() {
@@ -568,6 +656,7 @@ async function initUser() {
 
 window.addEventListener('DOMContentLoaded', () => {
   initUser();
+  initScriptTestTab();
   document.getElementById('postbackUrl').textContent = window.location.origin + '/postback';
   loadCatalog();
 });
