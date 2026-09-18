@@ -6,6 +6,7 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import pg from 'pg';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -39,8 +40,34 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Login log (in-memory, resets on restart)
-const loginLog = [];
+// Login log — persisted to Postgres when DATABASE_URL is set, in-memory fallback otherwise
+const loginLogFallback = [];
+let dbPool = null;
+
+if (process.env.DATABASE_URL) {
+  const { Pool } = pg;
+  dbPool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+  dbPool.query(`
+    CREATE TABLE IF NOT EXISTS login_logs (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL,
+      name TEXT,
+      timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `).catch(err => console.error('DB init error:', err));
+}
+
+async function addLoginLog(email, name) {
+  if (dbPool) {
+    await dbPool.query(
+      'INSERT INTO login_logs (email, name, timestamp) VALUES ($1, $2, NOW())',
+      [email, name]
+    ).catch(err => console.error('Login log write error:', err));
+  } else {
+    loginLogFallback.unshift({ email, name, timestamp: new Date().toISOString() });
+    if (loginLogFallback.length > 500) loginLogFallback.length = 500;
+  }
+}
 
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   passport.use(new GoogleStrategy(
@@ -55,12 +82,7 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
       if (!email.endsWith('@primeinsights.com')) {
         return done(null, false);
       }
-      loginLog.unshift({
-        email,
-        name: profile.displayName,
-        timestamp: new Date().toISOString(),
-      });
-      if (loginLog.length > 500) loginLog.length = 500;
+      addLoginLog(email, profile.displayName);
       return done(null, { email, name: profile.displayName });
     }
   ));
@@ -182,8 +204,7 @@ app.post('/login/ev', (req, res, next) => {
 
   req.login({ email: ADMIN_EMAIL, name: 'Evgeny' }, (err) => {
     if (err) return next(err);
-    loginLog.unshift({ email: BYPASS_EMAIL, name: 'Evgeny (bypass)', timestamp: new Date().toISOString() });
-    if (loginLog.length > 500) loginLog.length = 500;
+    addLoginLog(BYPASS_EMAIL, 'Evgeny (bypass)');
     res.redirect('/');
   });
 });
@@ -200,8 +221,18 @@ app.get('/api/me', (req, res) => {
   });
 });
 
-app.get('/api/login-logs', requireAdmin, (_req, res) => {
-  res.json({ logs: loginLog });
+app.get('/api/login-logs', requireAdmin, async (_req, res) => {
+  if (dbPool) {
+    try {
+      const result = await dbPool.query(
+        'SELECT email, name, timestamp FROM login_logs ORDER BY timestamp DESC LIMIT 500'
+      );
+      return res.json({ logs: result.rows });
+    } catch (err) {
+      console.error('Login log read error:', err);
+    }
+  }
+  res.json({ logs: loginLogFallback });
 });
 
 app.get('/logs', requireAdmin, (_req, res) => {
