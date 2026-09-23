@@ -110,6 +110,7 @@
         <button class="tab-btn" data-tab="curl">Curl Request</button>
         <button class="tab-btn" data-tab="postbacks">S2S Postbacks</button>
         <button class="tab-btn" data-tab="script-test">Script Test</button>
+        <button class="tab-btn" data-tab="revenue">Revenue</button>
       </nav>
 
       <section id="tab-catalog" class="tab-panel active">
@@ -351,6 +352,78 @@
         </div>
       </section>
     </main>
+
+      <section id="tab-revenue" class="tab-panel">
+        <section class="controls card">
+          <form id="revenueForm">
+            <div class="advanced-grid">
+              <label>
+                Start date
+                <input id="revStartDate" name="start_date" type="date" required />
+              </label>
+              <label>
+                End date
+                <input id="revEndDate" name="end_date" type="date" required />
+              </label>
+            </div>
+
+            <fieldset class="rev-groupby-set">
+              <legend>Group by</legend>
+              <label class="rev-check"><input type="checkbox" name="group_by[]" value="date" checked /> date</label>
+              <label class="rev-check"><input type="checkbox" name="group_by[]" value="app" /> app</label>
+              <label class="rev-check"><input type="checkbox" name="group_by[]" value="country" /> country</label>
+              <label class="rev-check"><input type="checkbox" name="group_by[]" value="product" /> product</label>
+              <label class="rev-check"><input type="checkbox" name="group_by[]" value="offer_id" /> offer_id</label>
+            </fieldset>
+
+            <details class="advanced-options">
+              <summary>Filters</summary>
+              <div class="advanced-grid" style="margin-top:10px">
+                <label>
+                  Product
+                  <select name="product[]" id="revProduct">
+                    <option value="">Both</option>
+                    <option value="offers">Offers only</option>
+                    <option value="surveys">Surveys only</option>
+                  </select>
+                </label>
+                <label>
+                  Countries
+                  <input name="countries_raw" id="revCountries" placeholder="US, DE, GB (blank = all)" />
+                </label>
+              </div>
+            </details>
+
+            <button type="submit" id="revRunBtn">Run Query</button>
+          </form>
+          <p id="revStatus" class="status">Ready.</p>
+        </section>
+
+        <div class="api-response-block">
+          <p class="api-response-label">GET /api/v1/reporting/daily — curl</p>
+          <div class="card json-viewer-card curl-card">
+            <button class="curl-copy-btn" data-target="revCurl">Copy</button>
+            <pre id="revCurl" class="json-viewer curl-viewer">Run a query to see the curl command here.</pre>
+          </div>
+        </div>
+
+        <div id="revTableWrap" style="display:none">
+          <p class="api-response-label" id="revRowCount"></p>
+          <div class="rev-table-scroll">
+            <table class="rev-table" id="revTable">
+              <thead id="revThead"></thead>
+              <tbody id="revTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="api-response-block">
+          <p class="api-response-label">Raw response</p>
+          <div class="card json-viewer-card">
+            <pre id="revResponseJson" class="json-viewer">Run a query to see the raw response here.</pre>
+          </div>
+        </div>
+      </section>
 
     <template id="offerCardTemplate">
       <article class="offer card">

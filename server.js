@@ -17,6 +17,7 @@ app.set('trust proxy', 1);
 
 const APP_TOKEN = process.env.APP_TOKEN;
 const APP_HASH = process.env.APP_HASH;
+const REVENUE_API_KEY = process.env.REVENUE_API_KEY;
 const PRIMEEARN_BASE_URL = 'https://partners.primeearn.com';
 const ADMIN_EMAIL = 'evgeny.b@primeinsights.com';
 const BYPASS_EMAIL = 'evgeny.b@primeopinion.com';
@@ -426,6 +427,33 @@ app.get('/api/static-feed', async (req, res) => {
     return res.json(data);
   } catch {
     return res.status(502).json({ status: 'error', message: 'Failed to reach PrimeEarn Static Feed API.' });
+  }
+});
+
+app.get('/api/revenue', async (req, res) => {
+  if (!REVENUE_API_KEY) {
+    return res.status(500).json({ status: 'error', message: 'REVENUE_API_KEY not configured on the server.' });
+  }
+
+  const { start_date, end_date } = req.query;
+  if (!start_date || !end_date) {
+    return res.status(400).json({ status: 'error', message: 'start_date and end_date are required.' });
+  }
+
+  let url = `${PRIMEEARN_BASE_URL}/api/v1/reporting/daily?start_date=${encodeURIComponent(start_date)}&end_date=${encodeURIComponent(end_date)}`;
+  for (const v of [].concat(req.query['group_by[]']  || [])) url += `&group_by[]=${encodeURIComponent(v)}`;
+  for (const v of [].concat(req.query['app[]']       || [])) url += `&app[]=${encodeURIComponent(v)}`;
+  for (const v of [].concat(req.query['country[]']   || [])) url += `&country[]=${encodeURIComponent(v)}`;
+  for (const v of [].concat(req.query['product[]']   || [])) url += `&product[]=${encodeURIComponent(v)}`;
+  for (const v of [].concat(req.query['offer_id[]']  || [])) url += `&offer_id[]=${encodeURIComponent(v)}`;
+
+  try {
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${REVENUE_API_KEY}` } });
+    const data = await response.json();
+    if (!response.ok) return res.status(response.status).json(data);
+    return res.json({ ...data, _debug_url: url });
+  } catch {
+    return res.status(502).json({ status: 'error', message: 'Failed to reach PrimeEarn Revenue API.' });
   }
 });
 

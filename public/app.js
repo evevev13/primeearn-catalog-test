@@ -636,6 +636,145 @@ function initScriptTestTab() {
   });
 }
 
+// ── Revenue tab ───────────────────────────────────────────────────────────────
+
+function revIsoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function initRevenueDateDefaults() {
+  const today = new Date();
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  const weekAgo   = new Date(today); weekAgo.setDate(today.getDate() - 7);
+  const start = document.getElementById('revStartDate');
+  const end   = document.getElementById('revEndDate');
+  if (start && !start.value) start.value = revIsoDate(weekAgo);
+  if (end   && !end.value)   end.value   = revIsoDate(yesterday);
+}
+
+function buildRevenueCurl(apiUrl) {
+  return `curl "${apiUrl.replace(PRIMEEARN_BASE_URL_CLIENT, 'https://partners.primeearn.com')}" \\\n  -H "Authorization: Bearer {REVENUE_API_KEY}"`;
+}
+
+const PRIMEEARN_BASE_URL_CLIENT = '';  // requests go through our proxy /api/revenue
+
+function buildRevenueUrl(formData) {
+  const params = new URLSearchParams();
+  params.set('start_date', formData.get('start_date'));
+  params.set('end_date',   formData.get('end_date'));
+
+  for (const v of formData.getAll('group_by[]')) params.append('group_by[]', v);
+
+  const product = formData.get('product[]');
+  if (product) params.append('product[]', product);
+
+  const countriesRaw = String(formData.get('countries_raw') || '').trim();
+  if (countriesRaw) {
+    countriesRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+      .forEach(c => params.append('country[]', c));
+  }
+
+  return `/api/revenue?${params.toString()}`;
+}
+
+function buildRevenueCurlDisplay(formData) {
+  const params = new URLSearchParams();
+  params.set('start_date', formData.get('start_date'));
+  params.set('end_date',   formData.get('end_date'));
+  for (const v of formData.getAll('group_by[]')) params.append('group_by[]', v);
+  const product = formData.get('product[]');
+  if (product) params.append('product[]', product);
+  const countriesRaw = String(formData.get('countries_raw') || '').trim();
+  if (countriesRaw) {
+    countriesRaw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
+      .forEach(c => params.append('country[]', c));
+  }
+  return `curl "https://partners.primeearn.com/api/v1/reporting/daily?${params.toString()}" \\\n  -H "Authorization: Bearer {REVENUE_API_KEY}"`;
+}
+
+const REV_COLS = [
+  { key: 'date',              label: 'Date' },
+  { key: 'app',               label: 'App' },
+  { key: 'country',           label: 'Country' },
+  { key: 'product',           label: 'Product' },
+  { key: 'offer_id',          label: 'Offer ID' },
+  { key: 'revenue_usd',       label: 'Revenue USD' },
+  { key: 'user_payouts_usd',  label: 'User Payouts USD' },
+  { key: 'monetized_users',   label: 'Monetized Users' },
+  { key: 'offer_installs',    label: 'Installs' },
+  { key: 'survey_clicks',     label: 'Survey Clicks' },
+  { key: 'survey_completes',  label: 'Survey Completes' },
+];
+
+function renderRevenueTable(rows) {
+  const thead = document.getElementById('revThead');
+  const tbody = document.getElementById('revTbody');
+  if (!thead || !tbody) return;
+
+  // Only show columns that have at least one non-null value
+  const activeCols = REV_COLS.filter(c => rows.some(r => r[c.key] !== null && r[c.key] !== undefined));
+
+  thead.innerHTML = `<tr>${activeCols.map(c => `<th>${c.label}</th>`).join('')}</tr>`;
+  tbody.innerHTML = rows.map(row => {
+    const cells = activeCols.map(c => {
+      const v = row[c.key];
+      if (v === null || v === undefined) return '<td class="rev-null">—</td>';
+      if (c.key === 'revenue_usd' || c.key === 'user_payouts_usd') {
+        return `<td class="rev-num">$${Number(v).toFixed(2)}</td>`;
+      }
+      if (typeof v === 'number') return `<td class="rev-num">${v.toLocaleString()}</td>`;
+      return `<td>${v}</td>`;
+    });
+    return `<tr>${cells.join('')}</tr>`;
+  }).join('');
+}
+
+function initRevenueTab() {
+  initRevenueDateDefaults();
+  const form = document.getElementById('revenueForm');
+  if (!form) return;
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const statusEl = document.getElementById('revStatus');
+    statusEl.textContent = 'Loading…';
+    statusEl.classList.remove('error');
+
+    const formData = new FormData(form);
+    const url = buildRevenueUrl(formData);
+    const curlDisplay = buildRevenueCurlDisplay(formData);
+    document.getElementById('revCurl').textContent = curlDisplay;
+
+    try {
+      const res = await fetch(url);
+      const data = await readResponsePayload(res);
+
+      document.getElementById('revResponseJson').textContent = JSON.stringify(data, null, 2);
+
+      if (!res.ok) {
+        statusEl.textContent = `Error ${res.status}: ${data.message || JSON.stringify(data)}`;
+        statusEl.classList.add('error');
+        document.getElementById('revTableWrap').style.display = 'none';
+        return;
+      }
+
+      const rows = data.data || [];
+      const meta = data.meta || {};
+      renderRevenueTable(rows);
+
+      const wrap = document.getElementById('revTableWrap');
+      wrap.style.display = rows.length ? '' : 'none';
+      document.getElementById('revRowCount').textContent =
+        `${meta.row_count ?? rows.length} rows — ${meta.start_date} → ${meta.end_date}`;
+
+      statusEl.textContent = rows.length ? `${rows.length} rows returned.` : 'No data for this range.';
+    } catch (err) {
+      statusEl.textContent = `Request failed: ${err.message}`;
+      statusEl.classList.add('error');
+    }
+  });
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 async function initUser() {
@@ -657,6 +796,7 @@ async function initUser() {
 window.addEventListener('DOMContentLoaded', () => {
   initUser();
   initScriptTestTab();
+  initRevenueTab();
   document.getElementById('postbackUrl').textContent = window.location.origin + '/postback';
   loadCatalog();
 });
