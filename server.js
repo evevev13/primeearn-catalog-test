@@ -431,8 +431,9 @@ app.get('/api/static-feed', async (req, res) => {
 });
 
 app.get('/api/revenue', async (req, res) => {
-  if (!REVENUE_API_KEY) {
-    return res.status(500).json({ status: 'error', message: 'REVENUE_API_KEY not configured on the server.' });
+  const apiKey = String(req.query.apiKey || '').trim() || REVENUE_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ status: 'error', message: 'No API key provided. Enter one in the form or set REVENUE_API_KEY on the server.' });
   }
 
   const { start_date, end_date } = req.query;
@@ -448,7 +449,7 @@ app.get('/api/revenue', async (req, res) => {
   for (const v of [].concat(req.query['offer_id[]']  || [])) url += `&offer_id[]=${encodeURIComponent(v)}`;
 
   try {
-    const response = await fetch(url, { headers: { Authorization: `Bearer ${REVENUE_API_KEY}` } });
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${apiKey}` } });
     const data = await response.json();
     if (!response.ok) return res.status(response.status).json(data);
     return res.json({ ...data, _debug_url: url });

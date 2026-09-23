@@ -674,6 +674,9 @@ function buildRevenueUrl(formData) {
       .forEach(c => params.append('country[]', c));
   }
 
+  const apiKey = String(formData.get('apiKey') || '').trim();
+  if (apiKey) params.set('apiKey', apiKey);
+
   return `/api/revenue?${params.toString()}`;
 }
 

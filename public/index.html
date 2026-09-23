@@ -377,7 +377,7 @@
             </fieldset>
 
             <details class="advanced-options">
-              <summary>Filters</summary>
+              <summary>Filters &amp; credentials</summary>
               <div class="advanced-grid" style="margin-top:10px">
                 <label>
                   Product
@@ -390,6 +390,10 @@
                 <label>
                   Countries
                   <input name="countries_raw" id="revCountries" placeholder="US, DE, GB (blank = all)" />
+                </label>
+                <label style="grid-column:1/-1">
+                  API Key <span class="credentials-hint">(optional — overrides server default)</span>
+                  <input name="apiKey" id="revApiKey" type="password" placeholder="Bearer token from Settings → API Access" autocomplete="off" />
                 </label>
               </div>
             </details>
