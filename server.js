@@ -296,6 +296,10 @@ app.get('/api/health', (_req, res) => {
   res.json({ ok: true, hasToken: Boolean(APP_TOKEN), hasAppHash: Boolean(APP_HASH) });
 });
 
+app.get('/api/config', (_req, res) => {
+  res.json({ appToken: APP_TOKEN || '', appHash: APP_HASH || '' });
+});
+
 function resolveCredentials(req) {
   const token = String(req.query.appToken || '').trim() || APP_TOKEN;
   const hash = String(req.query.appHash || '').trim() || APP_HASH;

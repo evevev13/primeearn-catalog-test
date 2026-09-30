@@ -173,10 +173,24 @@ function renderOffers(offers, externalUserId, ip) {
 
 const PRIMEEARN_BASE = 'https://partners.primeearn.com';
 
+let serverAppToken = '';
+let serverAppHash  = '';
+
+async function loadServerConfig() {
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      const cfg = await res.json();
+      serverAppToken = cfg.appToken || '';
+      serverAppHash  = cfg.appHash  || '';
+    }
+  } catch { /* ignore */ }
+}
+
 function buildCurlCommand(path, queryParams) {
   const { appToken, appHash } = getCredentials();
-  const token = appToken || '{APP_TOKEN}';
-  const hash = appHash || '{APP_HASH}';
+  const token = appToken || serverAppToken || '{APP_TOKEN}';
+  const hash  = appHash  || serverAppHash  || '{APP_HASH}';
 
   const url = new URL(`${PRIMEEARN_BASE}/${token}${path}`);
   url.searchParams.set('app', hash);
@@ -398,8 +412,8 @@ function renderStaticOffers(offers) {
 }
 
 function buildStaticFeedCurl({ appToken, appHash, perPage, page, countries, platform, conversionType }) {
-  const token = appToken || '{APP_TOKEN}';
-  const hash = appHash || '{APP_HASH}';
+  const token = appToken || serverAppToken || '{APP_TOKEN}';
+  const hash  = appHash  || serverAppHash  || '{APP_HASH}';
   let url = `https://partners.primeearn.com/${token}/api/v1/offers/feed?app=${hash}`;
   if (perPage) url += `&per_page=${perPage}`;
   if (page && page !== '1') url += `&page=${page}`;
@@ -796,7 +810,8 @@ async function initUser() {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadServerConfig();
   initUser();
   initScriptTestTab();
   initRevenueTab();
