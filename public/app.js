@@ -84,7 +84,7 @@ async function loadOfferDetails(offerId, externalUserId, ip, detailsContainer, b
     if (appHash) params.set('appHash', appHash);
 
     updateCurlView('curlDetails', buildCurlCommand(`/api/v1/offers/${encodeURIComponent(offerId)}`, {
-      external_user_id: externalUserId, ip,
+      external_user_id: externalUserId, ip: ip || serverIp,
     }));
 
     const response = await fetch(`/api/offers/${encodeURIComponent(offerId)}?${params.toString()}`);
@@ -175,14 +175,19 @@ const PRIMEEARN_BASE = 'https://partners.primeearn.com';
 
 let serverAppToken = '';
 let serverAppHash  = '';
+let serverIp       = '';
 
 async function loadServerConfig() {
   try {
-    const res = await fetch('/api/config');
-    if (res.ok) {
-      const cfg = await res.json();
+    const [cfgRes, ipRes] = await Promise.all([fetch('/api/config'), fetch('/api/my-ip')]);
+    if (cfgRes.ok) {
+      const cfg = await cfgRes.json();
       serverAppToken = cfg.appToken || '';
       serverAppHash  = cfg.appHash  || '';
+    }
+    if (ipRes.ok) {
+      const ipData = await ipRes.json();
+      serverIp = ipData.ip || '';
     }
   } catch { /* ignore */ }
 }
@@ -270,7 +275,7 @@ async function loadCatalog(evt) {
     if (appHash) params.set('appHash', appHash);
 
     updateCurlView('curlOffers', buildCurlCommand('/api/v1/offers', {
-      external_user_id: externalUserId, platform, ip, maid, birthday, age, gender, zip, limit,
+      external_user_id: externalUserId, platform, ip: ip || serverIp, maid, birthday, age, gender, zip, limit,
     }));
 
     const response = await fetch(`/api/offers?${params.toString()}`);
@@ -313,7 +318,7 @@ async function loadInstalled() {
     if (appHash) params.set('appHash', appHash);
 
     updateCurlView('curlActive', buildCurlCommand('/api/v1/offers/active', {
-      external_user_id: externalUserId, ip,
+      external_user_id: externalUserId, ip: ip || serverIp,
     }));
 
     const response = await fetch(`/api/offers/active?${params.toString()}`);

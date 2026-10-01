@@ -300,6 +300,15 @@ app.get('/api/config', (_req, res) => {
   res.json({ appToken: APP_TOKEN || '', appHash: APP_HASH || '' });
 });
 
+app.get('/api/my-ip', async (req, res) => {
+  let ip = getClientIp(req);
+  if (!ip || ip.includes('127.0.0.1') || ip.includes('::1') || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    const publicIp = await detectPublicIp();
+    if (publicIp) ip = publicIp;
+  }
+  res.json({ ip: ip || '' });
+});
+
 function resolveCredentials(req) {
   const token = String(req.query.appToken || '').trim() || APP_TOKEN;
   const hash = String(req.query.appHash || '').trim() || APP_HASH;
